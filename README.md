@@ -6,3 +6,5 @@ It adds the needed code to a Gcode file. I use it with a switching three color e
 
 The script takes a file as input on the command-line but it's intended use is as a postprocessing
 script in Slic3r.
+
+This script is a work in progress and comes without any warranty whatsoever.
