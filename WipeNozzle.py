@@ -15,7 +15,6 @@ script in Slic3r.
 
 import sys
 import shutil
-# import os
 
 # Repetier-Host sends only the file name, Slic3r sends path and file name
 sourcename = sys.argv[1]
@@ -23,6 +22,31 @@ if sourcename[1] != ':':
     sourcename = sourcename	 # source file passed from Slic3r
 
 tmpname = 'tmpfile.gcode'    # temp file name
+
+# position of rubber wipe strip
+xpos = 50
+ypos = 430
+
+# default retraction length before tool change.
+# I use a 3-color THC-01 head. For this head the minimalretract length is 45mm
+# and the minimal extrusion length for priming is 55mm
+DefRetract = 45
+DefExtrude = 55
+
+# I noticed that some fillament neededmore extrusion length to reach a solid color than others
+# I guess not all fillament are created equally ;-)
+# Therefore I made it possible to define extrusion length in mm per fillament typr you have
+RedPLA = 75
+WhitePLA = 100
+BluePLA = 80
+BlackPLA = 100
+DarkGreyPLA = 100
+LightGreyPLA = 100
+
+# Define wich fillament is loaded into wich extruder Ext0 = T0 etc.
+Ext0 = RedPLA
+Ext1 = WhitePLA
+Ext3 = BluePLA
 
 with open(sourcename, 'rt') as fin, open(tmpname, 'w') as fout:
     while 1:  # loop to find tool changes and insert code"
@@ -33,43 +57,33 @@ with open(sourcename, 'rt') as fin, open(tmpname, 'w') as fout:
             fout.write(ln)
             continue
         if ln[:2] == 'T0':  # replace T0 with code
-            fout.write('T0			; Editted by WipeNozzle.py' + '\n')
-#           fout.write('G10 ; Inserted by WipeNozzle.py' + '\n') 			# retract (not necessary when using slic3r
-            fout.write('G1 E-45 F300		; Inserted by WipeNozzle.py' + '\n') 	# retract 45mm of filament at 5mm/sec
-            fout.write('G1 X50 Y430 F21000	; Inserted by WipeNozzle.py' + '\n') 	# move quickly to rear of bed and X=50
-#            fout.write('G11			; Inserted by WipeNozzle.py' + '\n') 	# un-retrcat (replace with E moves when not using firmware retract)
-            fout.write('G1 E100 F300		; Inserted by WipeNozzle.py' + '\n') 	# extrude 100mm of filament at 5mm/sec	
-            fout.write('G10			; Inserted by WipeNozzle.py' + '\n') 	# retract (replace with E moves when not using firmware retract)
-            fout.write('G1 X70 Y410 F1000	; Inserted by WipeNozzle.py' + '\n')  # move slowly forward past the rubber strip and 20mm to the right
-            fout.write('G1 X90 Y430 F1000	; Inserted by WipeNozzle.py' + '\n')  # move slowly backwards and right another 20mm
+            fout.write('G1 E-' + (str(DefRetract)) + ' F300		; Editted by WipeNozzle.py' + '\n') 	# retract before tool change
+            fout.write('T0			; Editted by WipeNozzle.py' + '\n')  # change tool
+            fout.write('G1 X' + (str(xpos)) + ' Y' + (str(ypos)) + ' F21000	; Inserted by WipeNozzle.py' + '\n') 	# move quickly to wipe position
+            fout.write('G1 E' + (str(Ext0)) + ' F300		; Editted by WipeNozzle.py' + '\n') 	# extrude fillament specific amount at 5mm/sec
+            fout.write('G1 X' + (str(xpos+20)) + ' Y' + (str(ypos-20)) + ' F1000	; Inserted by WipeNozzle.py' + '\n')  # move slowly forward past the rubber strip and 20mm to the right
+            fout.write('G1 X' + (str(xpos)) + ' Y' + (str(ypos)) + ' F1000	; Inserted by WipeNozzle.py' + '\n')  # move slowly backwards and right another 20mm
             fout.write('G1 R2 X0 Y0 Z0 F21000   ; Inserted by WipeNozzle.py' + '\n')  # move quickly to where the print head was at the T0 command.
             continue
         if ln[:2] == 'T1':  # replace T1 with code
-            fout.write('T1 			; Editted by WipeNozzle.py' + '\n')
-#           fout.write('G10 ; Inserted by WipeNozzle.py' + '\n') 			# retract (not necessary when using slic3r
-            fout.write('G1 E-45 F300		; Inserted by WipeNozzle.py' + '\n') 	# retract 45mm of filament at 5mm/sec
-            fout.write('G1 X50 Y430 F21000	; Inserted by WipeNozzle.py' + '\n') 	# move quickly to rear of bed and X=50
-#            fout.write('G11			; Inserted by WipeNozzle.py' + '\n') 	# un-retrcat (replace with E moves when not using firmware retract)
-            fout.write('G1 E100 F300		; Inserted by WipeNozzle.py' + '\n') 	# extrude 100mm of filament at 5mm/sec	
-            fout.write('G10			; Inserted by WipeNozzle.py' + '\n') 	# retract (replace with E moves when not using firmware retract)
-            fout.write('G1 X70 Y410 F1000	; Inserted by WipeNozzle.py' + '\n')  # move slowly forward past the rubber strip and 20mm to the right
-            fout.write('G1 X90 Y430 F1000	; Inserted by WipeNozzle.py' + '\n')  # move slowly backwards and right another 20mm
+            fout.write('G1 E-' + (str(DefRetract)) + ' F300		; Editted by WipeNozzle.py' + '\n') 	# retract before tool change
+            fout.write('T1			; Editted by WipeNozzle.py' + '\n')  # change tool
+            fout.write('G1 X' + (str(xpos)) + ' Y' + (str(ypos)) + ' F21000	; Inserted by WipeNozzle.py' + '\n') 	# move quickly to wipe position
+            fout.write('G1 E' + (str(Ext0)) + ' F300		; Editted by WipeNozzle.py' + '\n') 	# extrude fillament specific amount at 5mm/sec
+            fout.write('G1 X' + (str(xpos+20)) + ' Y' + (str(ypos-20)) + ' F1000	; Inserted by WipeNozzle.py' + '\n')  # move slowly forward past the rubber strip and 20mm to the right
+            fout.write('G1 X' + (str(xpos)) + ' Y' + (str(ypos)) + ' F1000	; Inserted by WipeNozzle.py' + '\n')  # move slowly backwards and right another 20mm
             fout.write('G1 R2 X0 Y0 Z0 F21000   ; Inserted by WipeNozzle.py' + '\n')  # move quickly to where the print head was at the T1 command.
             continue
         if ln[:2] == 'T2':  # replace T2 with code
-            fout.write('T2 			; Editted by WipeNozzle.py' + '\n')
-#           fout.write('G10 ; Inserted by WipeNozzle.py' + '\n') 			# retract (not necessary when using slic3r
-            fout.write('G1 E-45 F300		; Inserted by WipeNozzle.py' + '\n') 	# retract 45mm of filament at 5mm/sec
-            fout.write('G1 X50 Y430 F21000	; Inserted by WipeNozzle.py' + '\n') 	# move quickly to rear of bed and X=50
-#            fout.write('G11			; Inserted by WipeNozzle.py' + '\n') 	# un-retrcat (replace with E moves when not using firmware retract)
-            fout.write('G1 E100 F300		; Inserted by WipeNozzle.py' + '\n') 	# extrude 100mm of filament at 5mm/sec	
-            fout.write('G10			; Inserted by WipeNozzle.py' + '\n') 	# retract (replace with E moves when not using firmware retract)
-            fout.write('G1 X70 Y410 F1000	; Inserted by WipeNozzle.py' + '\n')  # move slowly forward past the rubber strip and 20mm to the right
-            fout.write('G1 X90 Y430 F1000	; Inserted by WipeNozzle.py' + '\n')  # move slowly backwards and right another 20mm
-            fout.write('G1 R2 X0 Y0 Z0 F21000   ; Inserted by WipeNozzle.py' + '\n')  # move quickly to where the print head was at the T2 command.
+            fout.write('G1 E-' + (str(DefRetract)) + ' F300		; Editted by WipeNozzle.py' + '\n') 	# retract before tool change
+            fout.write('T2			; Editted by WipeNozzle.py' + '\n')  # change tool
+            fout.write('G1 X' + (str(xpos)) + ' Y' + (str(ypos)) + ' F21000	; Inserted by WipeNozzle.py' + '\n') 	# move quickly to wipe position
+            fout.write('G1 E' + (str(Ext0)) + ' F300		; Editted by WipeNozzle.py' + '\n') 	# extrude fillament specific amount at 5mm/sec
+            fout.write('G1 X' + (str(xpos+20)) + ' Y' + (str(ypos-20)) + ' F1000	; Inserted by WipeNozzle.py' + '\n')  # move slowly forward past the rubber strip and 20mm to the right
+            fout.write('G1 X' + (str(xpos)) + ' Y' + (str(ypos)) + ' F1000	; Inserted by WipeNozzle.py' + '\n')  # move slowly backwards and right another 20mm
+            fout.write('G1 R2 X0 Y0 Z0 F21000   ; Inserted by WipeNozzle.py' + '\n')  # move quickly to where the print head was at the T1 command.
         else:
             fout.write(ln)
 fin.close()	 # close the files
 fout.close()
 shutil.move(tmpname, sourcename)  # replace orginal file with modified file
-# os.remove(sourcename + '~') 
