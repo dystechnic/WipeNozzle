@@ -1,9 +1,6 @@
+WipeNozzle.py
 
-BlenderGcodeImport
-
-Python script to load gcode files produced by Slic3r into Blender
-
-his script is inspired by a post on Ian Deckingman's website somei3deas.wordpress.com.
+This script is inspired by a post on Ian Deckingman's website somei3deas.wordpress.com.
 The post (https://somei3deas.wordpress.com/2017/12/06/5-colour-printing-with-a-purge-bucket/)
 showed a way to print multicolor without the need of a purge/wipe tower.
 I wrote this script because I own a different hotend and Ian did not have a script in his original post.
