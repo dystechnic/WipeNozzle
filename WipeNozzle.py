@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+﻿#!/usr/bin/python
 # -*- coding: utf-8 -*-
 
 """
@@ -14,76 +14,108 @@ script in Slic3r.
 """
 
 import sys
-import shutil
+import re
+import os
 
-# Repetier-Host sends only the file name, Slic3r sends path and file name
-sourcename = sys.argv[1]
-if sourcename[1] != ':':
-    sourcename = sourcename	 # source file passed from Slic3r
 
-tmpname = 'tmpfile.gcode'    # temp file name
+# Position of rubber wipe strip
+# Mine is at the front-left corner of the bed (0,0)
 
-# position of rubber wipe strip
-xpos = 50
-ypos = 430
+xpos = 0
+ypos = 0
 
 # default retraction length before tool change.
 # I use a 3-color THC-01 head. For this head the minimalretract length is 45mm
 # and the minimal extrusion length for priming is 55mm
-DefRetract = 45
+
+DefRetract = 55
 DefExtrude = 55
 
 # I noticed that some fillament neededmore extrusion length to reach a solid color than others
 # I guess not all fillament are created equally ;-)
 # Therefore I made it possible to define extrusion length in mm per fillament typr you have
-RedPLA = 75
-WhitePLA = 100
+
+RedPLA = 80
+WhitePLA = 105
 BluePLA = 80
 BlackPLA = 100
 DarkGreyPLA = 100
 LightGreyPLA = 100
 
 # Define wich fillament is loaded into wich extruder Ext0 = T0 etc.
-Ext0 = RedPLA
-Ext1 = WhitePLA
+
+Ext0 = DarkGreyPLA
+Ext1 = RedPLA
 Ext3 = BluePLA
 
-with open(sourcename, 'rt') as fin, open(tmpname, 'w') as fout:
-    while 1:  # loop to find tool changes and insert code"
-        ln = fin.readline()
-        if (ln == ''):	 # check for end of file
-            break
-        if ln[0] == ';':  # skip comment lines
-            fout.write(ln)
-            continue
-        if ln[:2] == 'T0':  # replace T0 with code
-            fout.write('G1 E-' + (str(DefRetract)) + ' F300		; Editted by WipeNozzle.py' + '\n') 	# retract before tool change
-            fout.write('T0			; Editted by WipeNozzle.py' + '\n')  # change tool
-            fout.write('G1 X' + (str(xpos)) + ' Y' + (str(ypos)) + ' F21000	; Inserted by WipeNozzle.py' + '\n') 	# move quickly to wipe position
-            fout.write('G1 E' + (str(Ext0)) + ' F300		; Editted by WipeNozzle.py' + '\n') 	# extrude fillament specific amount at 5mm/sec
-            fout.write('G1 X' + (str(xpos+20)) + ' Y' + (str(ypos-20)) + ' F1000	; Inserted by WipeNozzle.py' + '\n')  # move slowly forward past the rubber strip and 20mm to the right
-            fout.write('G1 X' + (str(xpos)) + ' Y' + (str(ypos)) + ' F1000	; Inserted by WipeNozzle.py' + '\n')  # move slowly backwards and right another 20mm
-            fout.write('G1 R2 X0 Y0 Z0 F21000   ; Inserted by WipeNozzle.py' + '\n')  # move quickly to where the print head was at the T0 command.
-            continue
-        if ln[:2] == 'T1':  # replace T1 with code
-            fout.write('G1 E-' + (str(DefRetract)) + ' F300		; Editted by WipeNozzle.py' + '\n') 	# retract before tool change
-            fout.write('T1			; Editted by WipeNozzle.py' + '\n')  # change tool
-            fout.write('G1 X' + (str(xpos)) + ' Y' + (str(ypos)) + ' F21000	; Inserted by WipeNozzle.py' + '\n') 	# move quickly to wipe position
-            fout.write('G1 E' + (str(Ext0)) + ' F300		; Editted by WipeNozzle.py' + '\n') 	# extrude fillament specific amount at 5mm/sec
-            fout.write('G1 X' + (str(xpos+20)) + ' Y' + (str(ypos-20)) + ' F1000	; Inserted by WipeNozzle.py' + '\n')  # move slowly forward past the rubber strip and 20mm to the right
-            fout.write('G1 X' + (str(xpos)) + ' Y' + (str(ypos)) + ' F1000	; Inserted by WipeNozzle.py' + '\n')  # move slowly backwards and right another 20mm
-            fout.write('G1 R2 X0 Y0 Z0 F21000   ; Inserted by WipeNozzle.py' + '\n')  # move quickly to where the print head was at the T1 command.
-            continue
-        if ln[:2] == 'T2':  # replace T2 with code
-            fout.write('G1 E-' + (str(DefRetract)) + ' F300		; Editted by WipeNozzle.py' + '\n') 	# retract before tool change
-            fout.write('T2			; Editted by WipeNozzle.py' + '\n')  # change tool
-            fout.write('G1 X' + (str(xpos)) + ' Y' + (str(ypos)) + ' F21000	; Inserted by WipeNozzle.py' + '\n') 	# move quickly to wipe position
-            fout.write('G1 E' + (str(Ext0)) + ' F300		; Editted by WipeNozzle.py' + '\n') 	# extrude fillament specific amount at 5mm/sec
-            fout.write('G1 X' + (str(xpos+20)) + ' Y' + (str(ypos-20)) + ' F1000	; Inserted by WipeNozzle.py' + '\n')  # move slowly forward past the rubber strip and 20mm to the right
-            fout.write('G1 X' + (str(xpos)) + ' Y' + (str(ypos)) + ' F1000	; Inserted by WipeNozzle.py' + '\n')  # move slowly backwards and right another 20mm
-            fout.write('G1 R2 X0 Y0 Z0 F21000   ; Inserted by WipeNozzle.py' + '\n')  # move quickly to where the print head was at the T1 command.
-        else:
-            fout.write(ln)
-fin.close()	 # close the files
+
+# Get input file from cli and define input and output file variables
+
+infile = sys.argv[1]
+outfile = sys.argv[1] + '.postproc'
+
+with open(infile, 'rt') as fin:
+    with open(outfile, 'w') as fout:
+        while 1:  					# loop to find tool changes and insert code"
+            ln = fin.readline()
+            if ln == '':  				# check for end of file
+                break
+            if ln[0] == ';':  				# skip comment lines
+                fout.write(ln)
+                continue
+            if ln[:2] == 'T0':  			# replace T0 with code
+                fout.write('; =====> Editted by WipeNozzle.py (T0)' + '\n')
+                fout.write('M401' + '\n')  # Use M401 to store and M402 to move to the stored position(it´s not in EEprom)
+                fout.write('G1 X' + str(xpos) + ' Y' + str(ypos) + ' F21000' + '\n')  	# move quickly to wipe position
+                fout.write('G1 E-' + str(DefRetract) + ' F300' + '\n')  # retract before tool change
+                fout.write('T0' + '\n')  		# change tool.
+                fout.write('G1 E' + str(Ext0) + ' F300' + '\n')  # extrude fillament specific amount at 5mm/sec
+                fout.write('G1 X' + str(xpos + 40) + ' Y' + str(ypos + 12) + ' F1000' + '\n')  # move slowly forward past the rubber strip and 20mm to the right
+                fout.write('G1 X' + str(xpos) + ' Y' + str(ypos) + ' F1000' + '\n')  # move back to the start position (0,0)
+                fout.write('G1 E-6.5 F1800' + '\n')  # Retract to prevent oozing
+                fout.write('M402 F10000' + '\n')  # Go back to where the nozzle was before the wipe
+                fout.write('G1 E6.5 F1800' + '\n')   # Re-prime the nozzle before printing
+                fout.write('; =====> Editted by WipeNozzle.py' + '\n')
+                continue
+            if ln[:2] == 'T1':  # replace T1 with code
+                fout.write('; =====> Editted by WipeNozzle.py (T1)' + '\n')
+                fout.write('M401' + '\n')  # Use M401 to store and M402 to move to the stored position(it´s not in EEprom)
+                fout.write('G1 X' + str(xpos) + ' Y' + str(ypos) + ' F21000' + '\n')  	# move quickly to wipe position
+                fout.write('G1 E-' + str(DefRetract) + ' F300' + '\n')  # retract before tool change
+                fout.write('T1' + '\n')  		# change tool.
+                fout.write('G1 E' + str(Ext1) + ' F300' + '\n')  # extrude fillament specific amount at 5mm/sec
+                fout.write('G1 X' + str(xpos + 40) + ' Y' + str(ypos + 12) + ' F1000' + '\n')  # move slowly forward past the rubber strip and 20mm to the right
+                fout.write('G1 X' + str(xpos) + ' Y' + str(ypos) + ' F1000' + '\n')  # move slowly back to the start position (0,0)
+                fout.write('G1 E-6.5 F1800' + '\n')  # Retract to prevent oozing
+                fout.write('M402 F10000' + '\n')  # Go back to where the nozzle was before the wipe
+                fout.write('G1 E6.5 F1800' + '\n')   # Re-prime the nozzle before printing
+                fout.write('; =====> Editted by WipeNozzle.py' + '\n')
+                continue
+            if ln[:2] == 'T2':  # replace T2 with code
+                fout.write('; =====> Editted by WipeNozzle.py (T2)' + '\n')
+                fout.write('M401' + '\n')  # Use M401 to store and M402 to move to the stored position(it´s not in EEprom)
+                fout.write('G1 X' + str(xpos) + ' Y' + str(ypos) + ' F21000' + '\n')  	# move quickly to wipe position
+                fout.write('G1 E-' + str(DefRetract) + ' F300' + '\n')  # retract before tool change
+                fout.write('T2' + '\n')  		# change tool.
+                fout.write('G1 E' + str(Ext2) + ' F300' + '\n')  # extrude fillament specific amount at 5mm/sec
+                fout.write('G1 X' + str(xpos + 40) + ' Y' + str(ypos + 12) + ' F1000' + '\n')  # move slowly forward past the rubber strip and 20mm to the right
+                fout.write('G1 X' + str(xpos) + ' Y' + str(ypos) + ' F1000' + '\n')  # move slowly back to the start position (0,0)
+                fout.write('G1 E-6.5 F1800' + '\n')  # Retract to prevent oozing
+                fout.write('M402 F10000' + '\n')  # Go back to where the nozzle was before the wipe
+                fout.write('G1 E6.5 F1800' + '\n')   # Re-prime the nozzle before printing
+                fout.write('; =====> Editted by WipeNozzle.py T2' + '\n')
+            else:
+                fout.write(ln)
+
+# close the files
+
+fin.close()
 fout.close()
-shutil.move(tmpname, sourcename)  # replace orginal file with modified file
+
+# Delete the original input file
+
+os.remove(sys.argv[1])
+
+# Rename the output file to be what the input file was called
+
+os.rename(sys.argv[1] + '.postproc', sys.argv[1])
