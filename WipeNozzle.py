@@ -1,4 +1,4 @@
-﻿#!/usr/bin/python
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 """
@@ -14,108 +14,145 @@ script in Slic3r.
 """
 
 import sys
-import re
-import os
+import shutil
 
-
-# Position of rubber wipe strip
-# Mine is at the front-left corner of the bed (0,0)
-
-xpos = 0
-ypos = 0
+#checker to see if it is the first toolchange in the G-Code file
+Firsttime = True
 
 # default retraction length before tool change.
 # I use a 3-color THC-01 head. For this head the minimalretract length is 45mm
-# and the minimal extrusion length for priming is 55mm
-
-DefRetract = 55
-DefExtrude = 55
-
-# I noticed that some fillament neededmore extrusion length to reach a solid color than others
-# I guess not all fillament are created equally ;-)
-# Therefore I made it possible to define extrusion length in mm per fillament typr you have
-
-RedPLA = 80
-WhitePLA = 105
-BluePLA = 80
-BlackPLA = 100
-DarkGreyPLA = 100
-LightGreyPLA = 100
-
-# Define wich fillament is loaded into wich extruder Ext0 = T0 etc.
-
-Ext0 = DarkGreyPLA
-Ext1 = RedPLA
-Ext3 = BluePLA
+# and the minimal extrusion length for priming is 55mm.
+# But I guess these are chinese mm's because my printer tells me different ;-)
+Retract1 = 5
+Retract2 = 75
+Extrude1 = 70
+Extrude2 = 35
+# Now we finaly can go do something interesting
+# First get the input file from cli and define input and output file variables
 
 
-# Get input file from cli and define input and output file variables
+# Repetier-Host sends only the file name, Slic3r sends path and file name
+sourcename = sys.argv[1]
+if sourcename[1] != ':':
+    sourcename = sourcename	 # source file passed from Slic3r
 
-infile = sys.argv[1]
-outfile = sys.argv[1] + '.postproc'
+tmpname = 'tmpfile.gcode'    # temp file name
 
-with open(infile, 'rt') as fin:
-    with open(outfile, 'w') as fout:
-        while 1:  					# loop to find tool changes and insert code"
-            ln = fin.readline()
-            if ln == '':  				# check for end of file
-                break
-            if ln[0] == ';':  				# skip comment lines
-                fout.write(ln)
-                continue
-            if ln[:2] == 'T0':  			# replace T0 with code
-                fout.write('; =====> Editted by WipeNozzle.py (T0)' + '\n')
-                fout.write('M401' + '\n')  # Use M401 to store and M402 to move to the stored position(it´s not in EEprom)
-                fout.write('G1 X' + str(xpos) + ' Y' + str(ypos) + ' F21000' + '\n')  	# move quickly to wipe position
-                fout.write('G1 E-' + str(DefRetract) + ' F300' + '\n')  # retract before tool change
-                fout.write('T0' + '\n')  		# change tool.
-                fout.write('G1 E' + str(Ext0) + ' F300' + '\n')  # extrude fillament specific amount at 5mm/sec
-                fout.write('G1 X' + str(xpos + 40) + ' Y' + str(ypos + 12) + ' F1000' + '\n')  # move slowly forward past the rubber strip and 20mm to the right
-                fout.write('G1 X' + str(xpos) + ' Y' + str(ypos) + ' F1000' + '\n')  # move back to the start position (0,0)
-                fout.write('G1 E-6.5 F1800' + '\n')  # Retract to prevent oozing
-                fout.write('M402 F10000' + '\n')  # Go back to where the nozzle was before the wipe
-                fout.write('G1 E6.5 F1800' + '\n')   # Re-prime the nozzle before printing
+with open(sourcename, 'rt') as fin, open(tmpname, 'w') as fout:
+    while 1:  # loop to find tool changes and insert code"
+        ln = fin.readline()
+        if (ln == ''):	 # check for end of file
+            break
+        if ln[0] == ';':  # skip comment lines
+            fout.write(ln)
+            continue
+        if ln[:2] == 'T0':  # replace T0 with code
+            if not Firsttime:  			# If it is not the first time a toolchange occurred, apply the changes
+                # First we extract the fillament fromthe active extruder in a way we can use
+                # the extruder again later and there are no obstructions in the splitter
+                fout.write('; =====> Editted by WipeNozzle.py (was T0)' + '\n')
+                fout.write('G91' + '\n')                            # relative moves
+                fout.write('GM83' + '\n')                           # relative moves for extruder
+                fout.write('G92 E0' + '\n')                         # set the current filament position to E=0
+                fout.write('G1 F1300 E-' + str(Retract1) + '\n')    # Quickly retract 'Retract1' mm to prevent oozing
+                fout.write('G1 X0.000000 Y0.000000 F21000' + '\n')  # Home X and Y axis leave Z at current height
+                fout.write('G92 E0' + '\n')                         # set the current filament position to E=0
+                fout.write('G1 F25 E5.000000' + '\n')               # reinsert 5mm to prevent stringing
+                fout.write('G92 E0' + '\n')                         # set the current filament position to E=0
+                fout.write('G1 F1300 E-' + str(Retract2) + '\n')    # Quickly retract 'Retract2' mm to free the splitter
+                fout.write('M84 E' + '\n')                          # release extruder stepper motor from 'holding' position
+                fout.write('T0' + '\n')                             # Now change the tool to T0.
+                #
+                # Load the next extruder, prime it with fillament and prepare it for printing
+                #
+                fout.write('M83' + '\n')                            # Relative movement for extruder
+                fout.write('G92 E0' + '\n')                         # set the current filament position to E=0
+                fout.write('G1 F700 E' + str(Extrude1) + '\n')      # Extrude 'Extrude1'mm to fill the splitter
+                fout.write('G1 F300	X20.000000 Y0.000000' + '\n')   # Move the Nozzle before purging
+                fout.write('G92 E0' + '\n')                         # set the current filament position to E=0
+                fout.write('G1 F300 E' + str(Extrude2) + '\n')      # Extrude 'Extrude2' mm to purge the nozzle
+                fout.write('G1 F300 X25.000000 Y10.000000' + '\n')  # Wipe the Nozzle
+                fout.write('G1 F300 X0.000000 Y0.000000' + '\n')    # Wipe the Nozzle
+                fout.write('G91' + '\n')                            # Set reletive movement
+                fout.write('M83' + '\n')                            # Relative movement for extruder
+                fout.write('G92 E0' + '\n')                         # set the current filament position to E=0
                 fout.write('; =====> Editted by WipeNozzle.py' + '\n')
-                continue
-            if ln[:2] == 'T1':  # replace T1 with code
-                fout.write('; =====> Editted by WipeNozzle.py (T1)' + '\n')
-                fout.write('M401' + '\n')  # Use M401 to store and M402 to move to the stored position(it´s not in EEprom)
-                fout.write('G1 X' + str(xpos) + ' Y' + str(ypos) + ' F21000' + '\n')  	# move quickly to wipe position
-                fout.write('G1 E-' + str(DefRetract) + ' F300' + '\n')  # retract before tool change
-                fout.write('T1' + '\n')  		# change tool.
-                fout.write('G1 E' + str(Ext1) + ' F300' + '\n')  # extrude fillament specific amount at 5mm/sec
-                fout.write('G1 X' + str(xpos + 40) + ' Y' + str(ypos + 12) + ' F1000' + '\n')  # move slowly forward past the rubber strip and 20mm to the right
-                fout.write('G1 X' + str(xpos) + ' Y' + str(ypos) + ' F1000' + '\n')  # move slowly back to the start position (0,0)
-                fout.write('G1 E-6.5 F1800' + '\n')  # Retract to prevent oozing
-                fout.write('M402 F10000' + '\n')  # Go back to where the nozzle was before the wipe
-                fout.write('G1 E6.5 F1800' + '\n')   # Re-prime the nozzle before printing
-                fout.write('; =====> Editted by WipeNozzle.py' + '\n')
-                continue
-            if ln[:2] == 'T2':  # replace T2 with code
-                fout.write('; =====> Editted by WipeNozzle.py (T2)' + '\n')
-                fout.write('M401' + '\n')  # Use M401 to store and M402 to move to the stored position(it´s not in EEprom)
-                fout.write('G1 X' + str(xpos) + ' Y' + str(ypos) + ' F21000' + '\n')  	# move quickly to wipe position
-                fout.write('G1 E-' + str(DefRetract) + ' F300' + '\n')  # retract before tool change
-                fout.write('T2' + '\n')  		# change tool.
-                fout.write('G1 E' + str(Ext2) + ' F300' + '\n')  # extrude fillament specific amount at 5mm/sec
-                fout.write('G1 X' + str(xpos + 40) + ' Y' + str(ypos + 12) + ' F1000' + '\n')  # move slowly forward past the rubber strip and 20mm to the right
-                fout.write('G1 X' + str(xpos) + ' Y' + str(ypos) + ' F1000' + '\n')  # move slowly back to the start position (0,0)
-                fout.write('G1 E-6.5 F1800' + '\n')  # Retract to prevent oozing
-                fout.write('M402 F10000' + '\n')  # Go back to where the nozzle was before the wipe
-                fout.write('G1 E6.5 F1800' + '\n')   # Re-prime the nozzle before printing
-                fout.write('; =====> Editted by WipeNozzle.py T2' + '\n')
             else:
                 fout.write(ln)
-
-# close the files
-
-fin.close()
+                Firsttime = False
+            continue
+        if ln[:2] == 'T1':  # replace T1 with code
+            if not Firsttime:  			# If it is not the first time a toolchange occurred, apply the changes
+                # First we extract the fillament fromthe active extruder in a way we can use
+                # the extruder again later and there are no obstructions in the splitter
+                fout.write('; =====> Editted by WipeNozzle.py (was T1)' + '\n')
+                fout.write('G91' + '\n')                            # relative moves
+                fout.write('GM83' + '\n')                           # relative moves for extruder
+                fout.write('G92 E0' + '\n')                         # set the current filament position to E=0
+                fout.write('G1 F1300 E-' + str(Retract1) + '\n')    # Quickly retract 'Retract1' mm to prevent oozing
+                fout.write('G1 X0.000000 Y0.000000 F21000' + '\n')  # Home X and Y axis leave Z at current height
+                fout.write('G92 E0' + '\n')                         # set the current filament position to E=0
+                fout.write('G1 F25 E5.000000' + '\n')               # reinsert 5mm to prevent stringing
+                fout.write('G92 E0' + '\n')                         # set the current filament position to E=0
+                fout.write('G1 F1300 E-' + str(Retract2) + '\n')    # Quickly retract 'Retract2' mm to free the splitter
+                fout.write('M84 E' + '\n')                          # release extruder stepper motor from 'holding' position
+                fout.write('T1' + '\n')                             # Now change the tool to T0.
+                #
+                # Load the next extruder, prime it with fillament and prepare it for printing
+                #
+                fout.write('M83' + '\n')                            # Relative movement for extruder
+                fout.write('G92 E0' + '\n')                         # set the current filament position to E=0
+                fout.write('G1 F700 E' + str(Extrude1) + '\n')      # Extrude 'Extrude1'mm to fill the splitter
+                fout.write('G1 F300	X20.000000 Y0.000000' + '\n')   # Move the Nozzle before purging
+                fout.write('G92 E0' + '\n')                         # set the current filament position to E=0
+                fout.write('G1 F300 E' + str(Extrude2) + '\n')      # Extrude 'Extrude2' mm to purge the nozzle
+                fout.write('G1 F300 X25.000000 Y10.000000' + '\n')  # Wipe the Nozzle
+                fout.write('G1 F300 X0.000000 Y0.000000' + '\n')    # Wipe the Nozzle
+                fout.write('G91' + '\n')                            # Set reletive movement
+                fout.write('M83' + '\n')                            # Relative movement for extruder
+                fout.write('G92 E0' + '\n')                         # set the current filament position to E=0
+                fout.write('; =====> Editted by WipeNozzle.py' + '\n')
+            else:
+                fout.write(ln)
+                Firsttime = False
+            continue
+        if ln[:2] == 'T2':  # replace T2 with code
+            if not Firsttime:  			# If it is not the first time a toolchange occurred, apply the changes
+                # First we extract the fillament fromthe active extruder in a way we can use
+                # the extruder again later and there are no obstructions in the splitter
+                fout.write('; =====> Editted by WipeNozzle.py (was T2)' + '\n')
+                fout.write('G91' + '\n')                            # relative moves
+                fout.write('GM83' + '\n')                           # relative moves for extruder
+                fout.write('G92 E0' + '\n')                         # set the current filament position to E=0
+                fout.write('G1 F1300 E-' + str(Retract1) + '\n')    # Quickly retract 'Retract1' mm to prevent oozing
+                fout.write('G1 X0.000000 Y0.000000 F21000' + '\n')  # Home X and Y axis leave Z at current height
+                fout.write('G92 E0' + '\n')                         # set the current filament position to E=0
+                fout.write('G1 F25 E5.000000' + '\n')               # reinsert 5mm to prevent stringing
+                fout.write('G92 E0' + '\n')                         # set the current filament position to E=0
+                fout.write('G1 F1300 E-' + str(Retract2) + '\n')    # Quickly retract 'Retract2' mm to free the splitter
+                fout.write('M84 E' + '\n')                          # release extruder stepper motor from 'holding' position
+                fout.write('T2' + '\n')                             # Now change the tool to T0.
+                #
+                # Load the next extruder, prime it with fillament and prepare it for printing
+                #
+                fout.write('M83' + '\n')                            # Relative movement for extruder
+                fout.write('G92 E0' + '\n')                         # set the current filament position to E=0
+                fout.write('G1 F700 E' + str(Extrude1) + '\n')      # Extrude 'Extrude1'mm to fill the splitter
+                fout.write('G1 F300	X20.000000 Y0.000000' + '\n')   # Move the Nozzle before purging
+                fout.write('G92 E0' + '\n')                         # set the current filament position to E=0
+                fout.write('G1 F300 E' + str(Extrude2) + '\n')      # Extrude 'Extrude2' mm to purge the nozzle
+                fout.write('G1 F300 X25.000000 Y10.000000' + '\n')  # Wipe the Nozzle
+                fout.write('G1 F300 X0.000000 Y0.000000' + '\n')    # Wipe the Nozzle
+                fout.write('G91' + '\n')                            # Set reletive movement
+                fout.write('M83' + '\n')                            # Relative movement for extruder
+                fout.write('G92 E0' + '\n')                         # set the current filament position to E=0
+                fout.write('; =====> Editted by WipeNozzle.py' + '\n')
+            else:
+                fout.write(ln)
+                Firsttime = False
+        else:
+            fout.write(ln)
+fin.close()	 # close the files
 fout.close()
-
-# Delete the original input file
-
-os.remove(sys.argv[1])
-
-# Rename the output file to be what the input file was called
-
-os.rename(sys.argv[1] + '.postproc', sys.argv[1])
+shutil.move(tmpname, sourcename)  # replace orginal file with modified file
+# os.remove(sourcename + '~')
