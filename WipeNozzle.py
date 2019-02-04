@@ -73,8 +73,8 @@ with open(sourcename, 'rt') as fin, open(tmpname, 'w') as fout:
                 fout.write('G1 F300 E' + str(Extrude2) + '\n')      # Extrude 'Extrude2' mm to purge the nozzle
                 fout.write('G1 F300 X25.000000 Y10.000000' + '\n')  # Wipe the Nozzle
                 fout.write('G1 F300 X0.000000 Y0.000000' + '\n')    # Wipe the Nozzle
-                fout.write('G91' + '\n')                            # Set reletive movement
-                fout.write('M83' + '\n')                            # Relative movement for extruder
+                fout.write('G91' + '\n')                            # Set relative movement
+                fout.write('M82' + '\n')                            # Back to absolute extrusion mode
                 fout.write('G92 E0' + '\n')                         # set the current filament position to E=0
                 fout.write('; =====> Editted by WipeNozzle.py' + '\n')
             else:
@@ -108,8 +108,8 @@ with open(sourcename, 'rt') as fin, open(tmpname, 'w') as fout:
                 fout.write('G1 F300 E' + str(Extrude2) + '\n')      # Extrude 'Extrude2' mm to purge the nozzle
                 fout.write('G1 F300 X25.000000 Y10.000000' + '\n')  # Wipe the Nozzle
                 fout.write('G1 F300 X0.000000 Y0.000000' + '\n')    # Wipe the Nozzle
-                fout.write('G91' + '\n')                            # Set reletive movement
-                fout.write('M83' + '\n')                            # Relative movement for extruder
+                fout.write('G91' + '\n')                            # Set relative movement
+                fout.write('M82' + '\n')                            # Back to absolute extrusion mode
                 fout.write('G92 E0' + '\n')                         # set the current filament position to E=0
                 fout.write('; =====> Editted by WipeNozzle.py' + '\n')
             else:
@@ -143,8 +143,8 @@ with open(sourcename, 'rt') as fin, open(tmpname, 'w') as fout:
                 fout.write('G1 F300 E' + str(Extrude2) + '\n')      # Extrude 'Extrude2' mm to purge the nozzle
                 fout.write('G1 F300 X25.000000 Y10.000000' + '\n')  # Wipe the Nozzle
                 fout.write('G1 F300 X0.000000 Y0.000000' + '\n')    # Wipe the Nozzle
-                fout.write('G91' + '\n')                            # Set reletive movement
-                fout.write('M83' + '\n')                            # Relative movement for extruder
+                fout.write('G91' + '\n')                            # Set relative movement
+                fout.write('M82' + '\n')                            # Back to absolute extrusion mode
                 fout.write('G92 E0' + '\n')                         # set the current filament position to E=0
                 fout.write('; =====> Editted by WipeNozzle.py' + '\n')
             else:
