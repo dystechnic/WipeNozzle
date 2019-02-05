@@ -11,12 +11,17 @@ and created this script. It adds the needed code to a Gcode file. I use it with 
 three color extruder.
 The script takes a file as input on the command-line but it's intended use is as a postprocessing
 script in Slic3r.
+
+I use a 3-color THC-01 head wich is a 3 in, 1 out head. So I have three extruders feeding
+one hotend. This script makes sure that all fillament in all three extruders is loaded
+and unloaded without clogging the hotend when needed.
+
 """
 
 import sys
 import shutil
 
-#checker to see if it is the first toolchange in the G-Code file
+# checker to see if it is the first toolchange in the G-Code file
 Firsttime = True
 
 # default retraction length before tool change.
@@ -27,6 +32,18 @@ Retract1 = 5
 Retract2 = 75
 Extrude1 = 70
 Extrude2 = 35
+
+# If you want to reset to reset the last active extruder after printing
+# you can use a marker in the 'End-Gcode' field of your slicer. This script wil detect
+# that marker and inserts the required codeself.
+# Don't forget to change the length field on line 58 to match the length of the
+# colun + a space + the length of your marker.
+# Set a default extrusion for the initial extruder in the Start G-code settings of your
+# slicer. The ideal length is Extrude1 + Etrude2
+# If you don't want to use this, just leave this empty or set it to something that doesn't exist.
+
+EOGmarker = 'G-Code-End'
+
 # Now we finaly can go do something interesting
 # First get the input file from cli and define input and output file variables
 
@@ -43,6 +60,15 @@ with open(sourcename, 'rt') as fin, open(tmpname, 'w') as fout:
         ln = fin.readline()
         if (ln == ''):	 # check for end of file
             break
+        if ln[:12] == '; ' + EOGmarker :  # Check for End Gcode marker
+            fout.write('; =====> Reached the end of Gcode marker' + '\n')
+            fout.write('G91' + '\n')                            # relative moves
+            fout.write('GM83' + '\n')                           # relative moves for extruder
+            fout.write('G1 F1300 E-' + str(Retract1) + '\n')    # Quickly retract 'Retract1' mm to prevent oozing
+            fout.write('G92 E0' + '\n')                         # set the current filament position to E=0
+            fout.write('G1 F1300 E-' + str(Retract2) + '\n')    # Quickly retract 'Retract2' mm to free the splitter
+            fout.write('M84 E' + '\n')                          # release extruder stepper motor from 'holding' position
+            fout.write('; =====> Editted by WipeNozzle.py' + '\n')
         if ln[0] == ';':  # skip comment lines
             fout.write(ln)
             continue
