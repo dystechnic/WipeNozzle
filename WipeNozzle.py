@@ -48,7 +48,6 @@ Ooze = 16
 # Set a default extrusion for the initial extruder in the Start G-code settings of your
 # slicer. The ideal length is Extrude1 + Etrude2
 # If you don't want to use this, just leave this empty or set it to something that doesn't exist.
-
 EOGmarker = 'G-Code-End'
 
 # Now we finaly can go do something interesting
