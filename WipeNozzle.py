@@ -64,7 +64,7 @@ with open(sourcename, 'rt') as fin, open(tmpname, 'w') as fout:
         ln = fin.readline()
         if (ln == ''):	                                            # check for end of file
             break
-        if ln[:12] == '; ' + EOGmarker :                            # Check for End Gcode marker
+        if ln[:12] == '; ' + EOGmarker:                            # Check for End Gcode marker
             fout.write('; =====> Reached the end of Gcode marker' + '\n')
             fout.write('M83' + '\n')                                # relative moves for extruder
             fout.write('G92 E0' + '\n')                             # set the current filament position to E=0
