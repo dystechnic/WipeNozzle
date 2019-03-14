@@ -81,7 +81,8 @@ with open(sourcename, 'rt') as fin, open(tmpname, 'w') as fout:
                 # First we extract the fillament fromthe active extruder in a way we can use
                 # the extruder again later and there are no obstructions in the splitter
                 fout.write('; =====> Editted by WipeNozzle.py (was T0)' + '\n')
-                fout.write('G60 S0' + '\n')                         # Save current position to memory slot S0
+# TODO: G60 feature request Marlin
+#                fout.write('G60 S0' + '\n')                         # Save current position to memory slot S0
                 fout.write('M83' + '\n')                            # Relative moves for extruder
                 fout.write('G92 E0' + '\n')                         # Set the current filament position to E=0
                 fout.write('G1 F1300 E-' + str(Retract1) + '\n')    # Quickly retract 'Retract1' mm to prevent oozing
@@ -106,7 +107,8 @@ with open(sourcename, 'rt') as fin, open(tmpname, 'w') as fout:
                 fout.write('G92 E0' + '\n')                         # Set the current filament position to E=0
                 fout.write('G1 F1300 E-' + str(Ooze) + '\n')        # Compensate fot the annoying Cura G1 F1200 E16
                 fout.write('G92 E0' + '\n')                         # Set the current filament position to E=0
-                fout.write('G61 S0 X Y F20000' + '\n')              # Return to saved X and Y position
+# TODO: G61 feature request Marlin
+#                fout.write('G61 S0 X Y F20000' + '\n')              # Return to saved X and Y position
                 fout.write('; =====> Editted by WipeNozzle.py' + '\n')
             else:
                 fout.write(ln)
@@ -117,7 +119,7 @@ with open(sourcename, 'rt') as fin, open(tmpname, 'w') as fout:
                 # First we extract the fillament fromthe active extruder in a way we can use
                 # the extruder again later and there are no obstructions in the splitter
                 fout.write('; =====> Editted by WipeNozzle.py (was T1)' + '\n')
-                fout.write('G60 S0' + '\n')                         # Save current position to memory slot S0
+#                fout.write('G60 S0' + '\n')                         # Save current position to memory slot S0
                 fout.write('M83' + '\n')                            # Relative moves for extruder
                 fout.write('G92 E0' + '\n')                         # Set the current filament position to E=0
                 fout.write('G1 F1300 E-' + str(Retract1) + '\n')    # Quickly retract 'Retract1' mm to prevent oozing
@@ -142,7 +144,7 @@ with open(sourcename, 'rt') as fin, open(tmpname, 'w') as fout:
                 fout.write('G92 E0' + '\n')                         # Set the current filament position to E=0
                 fout.write('G1 F1300 E-' + str(Ooze) + '\n')        # Compensate fot the annoying Cura G1 F1200 E16
                 fout.write('G92 E0' + '\n')                         # Set the current filament position to E=0
-                fout.write('G61 S0 X Y F20000' + '\n')              # Return to saved X and Y position
+#                fout.write('G61 S0 X Y F20000' + '\n')              # Return to saved X and Y position
                 fout.write('; =====> Editted by WipeNozzle.py' + '\n')
             else:
                 fout.write(ln)
@@ -153,7 +155,7 @@ with open(sourcename, 'rt') as fin, open(tmpname, 'w') as fout:
                 # First we extract the fillament fromthe active extruder in a way we can use
                 # the extruder again later and there are no obstructions in the splitter
                 fout.write('; =====> Editted by WipeNozzle.py (was T2)' + '\n')
-                fout.write('G60 S0' + '\n')                         # Save current position to memory slot S0
+#                fout.write('G60 S0' + '\n')                         # Save current position to memory slot S0
                 fout.write('M83' + '\n')                            # Relative moves for extruder
                 fout.write('G92 E0' + '\n')                         # Set the current filament position to E=0
                 fout.write('G1 F1300 E-' + str(Retract1) + '\n')    # Quickly retract 'Retract1' mm to prevent oozing
@@ -178,7 +180,7 @@ with open(sourcename, 'rt') as fin, open(tmpname, 'w') as fout:
                 fout.write('G92 E0' + '\n')                         # Set the current filament position to E=0
                 fout.write('G1 F1300 E-' + str(Ooze) + '\n')        # Compensate fot the annoying Cura G1 F1200 E16
                 fout.write('G92 E0' + '\n')                         # Set the current filament position to E=0
-                fout.write('G61 S0 X Y F20000' + '\n')              # Return to saved X and Y position
+#                fout.write('G61 S0 X Y F20000' + '\n')              # Return to saved X and Y position
                 fout.write('; =====> Editted by WipeNozzle.py' + '\n')
             else:
                 fout.write(ln)
