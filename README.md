@@ -7,8 +7,7 @@ I wrote this script because I own a different hotend and Ian did not have a scri
 
 The script adds the needed code to a Gcode file. I use it with a switching three color extruder. (THC-01)
 
-The script takes a file as input on the command-line but it's intended use is as a postprocessing
-script in Slic3r.
+The script takes a file as input on the command-line.
 
 This script is a work in progress and comes without any warranty whatsoever and is for my testing
 purposes only.
